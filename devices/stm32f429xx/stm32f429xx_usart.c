@@ -19,8 +19,6 @@
 #include "platforms.h"
 #include "../../architectures/armv7-m/debug_cm3.h"
 #include "stm32f429xx_init.h"
-//#include "./inc/serial_api.h"
-//#include "./src/serial.c"
 #include "stm32f429xx_usart.h"
 
 //start count by 0,1,2,etc
@@ -28,23 +26,17 @@ static const UartConfiguration g_uartConfigurations[] =
 {
     {
 	USART1,
-	//SYSCFG_EXTICR3_EXTI9_PA,
 	7,//AF7
-	//SYSCFG_EXTICR3_EXTI10_PA,	
 	7//AF7
     },
     {
 	USART2,
-	//SYSCFG_EXTICR2_EXTI5_PD,
 	7,//AF7
-	//SYSCFG_EXTICR2_EXTI6_PD,
 	7//AF7
     },
     {
 	USART3,
-	//SYSCFG_EXTICR3_EXTI10_PB,
 	7,//AF7
-	//SYSCFG_EXTICR3_EXTI11_PB,
 	7//AF7
     }
 };
@@ -58,19 +50,12 @@ typedef struct
     uint32_t baudRate;
 } UartParameters;
 
-/*
-static int serial_mriGet_irq_index(serial_t *obj)
-{
-    return obj->index;
-}
-*/
-
 
 static void     parseUartParameters(Token* pParameterTokens, UartParameters* pParameters);
 static void     setManualBaudFlag(void);
 static void     setUartSharedFlag(void);
 static void     saveUartToBeUsedByDebugger(uint32_t mriUart);
-void configureUartForExclusiveUseOfDebugger(UartParameters* pParameters);
+static void configureUartForExclusiveUseOfDebugger(UartParameters* pParameters);
 
 void __mriStm32f429xxUart_Init(Token *pParameterTokens)
 {
@@ -89,7 +74,7 @@ void __mriStm32f429xxUart_Init(Token *pParameterTokens)
 static void parseUartParameters(Token* pParameterTokens, UartParameters* pParameters)
 {
     memset(pParameters, 0, sizeof(*pParameters));
-
+    pParameters->uartIndex = 1;
     if (Token_MatchingString(pParameterTokens, "MRI_UART_MBED_USB"))
         pParameters->uartIndex = 1;
     if (Token_MatchingString(pParameterTokens, "MRI_UART_1"))
@@ -130,19 +115,19 @@ static void setUartPeripheralClock(uint32_t uart)
     {
 	case 1://USART1
 	    RCC->APB2RSTR |= RCC_APB2RSTR_USART1RST;
-	    //RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
+	    RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
 	    break;
 	case 2://USART2
 	    RCC->APB1RSTR |= RCC_APB1RSTR_USART2RST;
-	    //RCC->APB1ENR |= RCC_APB1ENR_USART2EN;
+	    RCC->APB1ENR |= RCC_APB1ENR_USART2EN;
 	    break;
 	case 3://USART3
 	    RCC->APB1RSTR |= RCC_APB1RSTR_USART3RST;
-	    //RCC->APB1ENR |= RCC_APB1ENR_USART3EN;
+	    RCC->APB1ENR |= RCC_APB1ENR_USART3EN;
 	    break;
 	default://USART1
 	    RCC->APB2RSTR |= RCC_APB2RSTR_USART1RST;
-	    //RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
+	    RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
     }
 }
 
@@ -367,10 +352,9 @@ int Platform_CommReceiveChar(void)
     int current_uart_index = Platform_CommUartIndex();
     USART_TypeDef *uart = g_uartConfigurations[current_uart_index].pUartRegisters;
 
-    if(uart->SR & USART_SR_RXNE) {
+    while( !(uart->SR & USART_SR_RXNE) ) 
+    	;//busy wait
         return (uart->DR & 0xFF);
-    }
-    return 0;
 }
 
 
@@ -380,12 +364,9 @@ void Platform_CommSendChar(int Character)
     int current_uart_index = Platform_CommUartIndex();
     USART_TypeDef *uart = g_uartConfigurations[current_uart_index].pUartRegisters;
 
-    if (Character) {
      while (!(uart->SR & USART_SR_TXE))
 	 ;//busy wait
-
-    uart->DR = (Character & 0x1FF);
-    }
+    uart->DR = (Character & 0xFF);
 }
 
 
@@ -421,7 +402,6 @@ int Platform_CommSharingWithApplication(void)
 static int isManualBaudRate(void)
 {
     return (int)(__mriStm32f429xxState.flags & STM32F429XX_UART_FLAGS_MANUAL_BAUD);
-    //return 1;//stm32f429 does not support auto-baudrate
 }
 
 
@@ -434,10 +414,8 @@ int Platform_CommShouldWaitForGdbConnect(void)
 
 int Platform_CommIsWaitingForGdbToConnect(void)
 {
-    if (!Platform_CommShouldWaitForGdbConnect())
+    //if (!Platform_CommShouldWaitForGdbConnect())
         return 0;//stm32f429 does not support auto-baudrate
-    else//Add by STM32F429
-	    return 1;
 }
 
 
@@ -449,7 +427,7 @@ void Platform_CommPrepareToWaitForGdbConnection(void)
     static const uint32_t   autoBaudAutoRestart = 1 << 2;
     static const uint32_t   autoBaudValue = autoBaudStart | autoBaudModeForStartBitOnly | autoBaudAutoRestart;
   */ 
-    //if (!Platform_CommShouldWaitForGdbConnect())
+    if (!Platform_CommShouldWaitForGdbConnect())
         return;
     
     //__mriStm32f429ziState.pCurrentUart->pUartRegisters->ACR = autoBaudValue;
@@ -496,7 +474,7 @@ int Platform_CommUartIndex(void)
     return __mriStm32f429xxState.pCurrentUart - g_uartConfigurations;
 }
 
-void configureNVICForUartInterrupt(uint32_t index)
+static void configureNVICForUartInterrupt(uint32_t index)
 {
     IRQn_Type irq_num_base = USART1_IRQn;
     /*
@@ -508,7 +486,7 @@ void configureNVICForUartInterrupt(uint32_t index)
     NVIC_EnableIRQ(currentUartIRQ);
 }
 
-void configureUartForExclusiveUseOfDebugger(UartParameters* pParameters)
+static void configureUartForExclusiveUseOfDebugger(UartParameters* pParameters)
 { 
     uint32_t uart_index = pParameters->uartIndex;
     setUartPeripheralClock(uart_index);
