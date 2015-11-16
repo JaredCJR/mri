@@ -29,8 +29,7 @@
 /* Flag to indicate whether context will contain FPU registers or not. */
 #define MRI_DEVICE_HAS_FPU 1
 
-typedef struct
-{
+typedef struct {
     const UartConfiguration*  pCurrentUart;
     uint32_t                  flags;
 } Stm32f429xxState;
