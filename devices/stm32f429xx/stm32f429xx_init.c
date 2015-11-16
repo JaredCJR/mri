@@ -50,13 +50,14 @@ void __mriStm32f429xx_Init(Token* pParameterTokens)
     void (* volatile dummyReference)(void) = USART1_IRQHandler;
     (void)dummyReference;
 
+    __mriStm32f429xxUart_Init(pParameterTokens);
     __try
         __mriCortexMInit(pParameterTokens);
     __catch
         __rethrow;
         
     defaultExternalInterruptsToPriority1();    
-    __mriStm32f429xxUart_Init(pParameterTokens);
+    //__mriStm32f429xxUart_Init(pParameterTokens);
 }
 
 static void defaultExternalInterruptsToPriority1(void)
