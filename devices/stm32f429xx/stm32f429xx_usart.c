@@ -21,7 +21,6 @@
 #include "stm32f429xx_init.h"
 #include "stm32f429xx_usart.h"
 
-static void configureNVICForUartInterrupt(uint32_t index);
 //start count by 0,1,2,etc
 static const UartConfiguration g_uartConfigurations[] = {
     {
@@ -50,6 +49,7 @@ typedef struct {
 } UartParameters;
 
 
+static void 	configureNVICForUartInterrupt(uint32_t index);
 static void     parseUartParameters(Token* pParameterTokens, UartParameters* pParameters);
 static void     setManualBaudFlag(void);
 static void     setUartSharedFlag(void);
@@ -471,13 +471,12 @@ int Platform_CommCausedInterrupt(void)
     int irq_num_base = USART1_IRQn;
     int currentUartIRQ = irq_num_base + Platform_CommUartIndex();
     return currentUartIRQ==interruptSource;
-    //return 1;
 }
 
 void Platform_CommClearInterrupt(void)
 {
-    __mriStm32f429xxState.pCurrentUart->pUartRegisters->SR &= ~USART_SR_RXNE;
     //Clear Interrupt flag,to avoid infinit loop in USARTx_Handler
+    __mriStm32f429xxState.pCurrentUart->pUartRegisters->SR &= ~USART_SR_RXNE;
 }
 
 int Platform_CommSharingWithApplication(void)
@@ -498,23 +497,15 @@ int Platform_CommShouldWaitForGdbConnect(void)
 int Platform_CommIsWaitingForGdbToConnect(void)
 {
     //if (!Platform_CommShouldWaitForGdbConnect())
-    return 0;//stm32f429 does not support auto-baudrate
+    	return 0;//stm32f429 does not support auto-baudrate
 }
 
 
 
 void Platform_CommPrepareToWaitForGdbConnection(void)
 {
-    /*
-      static const uint32_t   autoBaudStart = 1;
-      static const uint32_t   autoBaudModeForStartBitOnly = 1 << 1;
-      static const uint32_t   autoBaudAutoRestart = 1 << 2;
-      static const uint32_t   autoBaudValue = autoBaudStart | autoBaudModeForStartBitOnly | autoBaudAutoRestart;
-    */
-    if (!Platform_CommShouldWaitForGdbConnect())
-        return;
-
-    //__mriStm32f429ziState.pCurrentUart->pUartRegisters->ACR = autoBaudValue;
+    //if (!Platform_CommShouldWaitForGdbConnect())
+        return;//Due to the Platform_CommShouldWaitForGdbConnect() always return 0,the if condition always enter!
 }
 
 

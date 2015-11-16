@@ -53,7 +53,7 @@ void __mriStm32f429xx_Init(Token* pParameterTokens)
     __try
         __mriCortexMInit(pParameterTokens);
     __catch
-    __rethrow;
+        __rethrow;
 
     defaultExternalInterruptsToPriority1();
     __mriStm32f429xxUart_Init(pParameterTokens);

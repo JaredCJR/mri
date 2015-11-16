@@ -23,9 +23,7 @@
 
 typedef struct {
     USART_TypeDef*     pUartRegisters;
-    //uint32_t    txPin;
     uint32_t    txFunction;
-    //uint32_t    rxPin;
     uint32_t    rxFunction;
 } UartConfiguration;
 
