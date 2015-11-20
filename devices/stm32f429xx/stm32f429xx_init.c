@@ -63,7 +63,9 @@ static void defaultExternalInterruptsToPriority1(void)
 {
     int irq;
     for (irq = WWDG_IRQn ; irq <= DMA2D_IRQn ; irq++) //Set all priority
-        NVIC_SetPriority((IRQn_Type)irq, 1);
+	{
+		NVIC_SetPriority((IRQn_Type)irq, 1);
+	}
 }
 
 

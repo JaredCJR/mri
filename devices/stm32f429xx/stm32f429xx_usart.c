@@ -24,16 +24,28 @@
 //start count by 0,1,2,etc
 static const UartConfiguration g_uartConfigurations[] = {
     {
+		/* 
+		 * Tx=PA9
+		 * Rx=PA10
+		 */
         USART1,
         7,//AF7
         7//AF7
     },
     {
+		/* 
+		 * Tx=PD5
+		 * Rx=PD6
+		 */
         USART2,
         7,//AF7
         7//AF7
     },
     {
+		/* 
+		 * Tx=PB10
+		 * Rx=PB11
+		 */
         USART3,
         7,//AF7
         7//AF7
