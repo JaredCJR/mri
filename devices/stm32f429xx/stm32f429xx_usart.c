@@ -20,6 +20,8 @@
 #include "../../architectures/armv7-m/debug_cm3.h"
 #include "stm32f429xx_init.h"
 #include "stm32f429xx_usart.h"
+//#include "./stdarg.h"
+#include <stdarg.h>
 
 //start count by 0,1,2,etc
 static const UartConfiguration g_uartConfigurations[] = {
@@ -67,6 +69,20 @@ static void     setManualBaudFlag(void);
 static void     setUartSharedFlag(void);
 static void     saveUartToBeUsedByDebugger(uint32_t mriUart);
 static void  	configureUartForExclusiveUseOfDebugger(UartParameters* pParameters);
+
+void Debug_USART3_INIT(void);
+void USART3_SendChar(int Character);
+int USART3_ReceiveChar(void);
+void USART3_puts(char* s);
+void dbg_printf(char *fmt, ...);
+void dbg_vprintf(char *fmt, va_list va);
+static int dbg_put_hex(const uint32_t val, int width, const char pad);
+static void dbg_put_dec(const uint32_t val, const int width, const char pad);
+static void dbg_puts_x(char *str, int width, const char pad);
+
+void dbg2_put_dec(const uint32_t val);
+
+
 
 void __mriStm32f429xxUart_Init(Token *pParameterTokens)
 {
@@ -291,8 +307,8 @@ void enableUART(uint32_t uart)
     /*
      * Set baud-rate
      */
-    uint32_t base_addr = USART1_BASE;
-    USART_TypeDef *USARTx = USART1;
+    uint32_t base_addr;
+    USART_TypeDef *USARTx;
     switch(uart) {
         case 1://USART1
             base_addr = USART1_BASE;
@@ -306,6 +322,9 @@ void enableUART(uint32_t uart)
             base_addr = USART3_BASE;
             USARTx = USART3;
             break;
+		default:
+			base_addr = USART1_BASE;
+			USARTx = USART1;
     }
 
     _uart->BRR = usart_baud_calc(base_addr,USARTx,115200);//baudrate=115200
@@ -477,11 +496,19 @@ void Platform_CommSendChar(int Character)
 
 int Platform_CommCausedInterrupt(void)
 {
-    int interruptSource = (int)getCurrentlyExecutingExceptionNumber();
+    uint32_t interruptSource = getCurrentlyExecutingExceptionNumber();
 
     //For USART1~3,the IRQn are continuous,others need check!
-    int irq_num_base = USART1_IRQn;
-    int currentUartIRQ = irq_num_base + Platform_CommUartIndex();
+    uint32_t irq_num_base = (uint32_t)USART1_IRQn;
+    uint32_t currentUartIRQ = irq_num_base + Platform_CommUartIndex();
+	if(currentUartIRQ==interruptSource)
+	{
+		dbg_printf("Platform_CommCausedInterrupt == 1\n");
+	}else
+	{
+		dbg_printf("IRQ_Sourec=%d\n",interruptSource);
+		dbg_printf("IRQ_Current=%d\n",currentUartIRQ);
+	}
     return currentUartIRQ==interruptSource;
 }
 
@@ -565,6 +592,212 @@ static void configureNVICForUartInterrupt(uint32_t index)
     NVIC_EnableIRQ(currentUartIRQ);
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
+
+void Debug_USART3_INIT(void)
+{
+    enableUartPeripheralCLOCK(3);
+    enableGPIO(3);
+    enableUART(3);//baudrate = 115200
+}
+
+void USART3_SendChar(int Character)
+{
+    USART_TypeDef *uart = USART3;
+    while (!(uart->SR & USART_SR_TXE)) {
+        //busy wait
+    }   
+    uart->DR = (Character & 0x1FF);
+}
+
+int USART3_ReceiveChar(void)                                                                                                                                     
+{
+    while( !(USART3->SR & USART_SR_RXNE) ) {
+        //busy wait
+    }  
+    return (USART3->DR & 0x1FF);
+}
+
+void USART3_puts(char* s)
+{
+    while(*s) {
+    	USART3_SendChar(*s);
+        s++;
+    }   
+}
+
+static void dbg_puts_x(char *str, int width, const char pad) 
+{
+    while (*str) {
+        if (*str == '\n')
+            USART3_SendChar('\r');
+        USART3_SendChar(*(str++));
+        --width;
+    }
+
+    while (width > 0) {
+        USART3_SendChar(pad);
+        --width;
+    }
+}
+
+void dbg2_put_dec(const uint32_t val) 
+{
+    uint32_t divisor;
+    int digits;
+
+    // estimate number of spaces and digits
+    for (divisor = 1, digits = 1; val / divisor >= 10; divisor *= 10, digits++)
+        ;
+/*
+    // print spaces
+    for (; digits < width; digits++)
+        USART3_SendChar(pad);
+*/
+    // print digits 
+    do {
+        USART3_SendChar(((val / divisor) % 10) + '0');
+    } while (divisor /= 10);
+}
+
+
+static void dbg_put_dec(const uint32_t val, const int width, const char pad) 
+{
+    uint32_t divisor;
+    int digits;
+
+    // estimate number of spaces and digits
+    for (divisor = 1, digits = 1; val / divisor >= 10; divisor *= 10, digits++)
+    	;
+
+    // print spaces
+    for (; digits < width; digits++)
+        USART3_SendChar(pad);
+
+    // print digits 
+    do {
+        USART3_SendChar(((val / divisor) % 10) + '0');
+    } while (divisor /= 10);
+}
+
+
+#define hexchars(x) \
+    (((x) < 10) ? \
+        ('0' + (x)) : \
+        ('a' + ((x) - 10)))
+
+static int dbg_put_hex(const uint32_t val, int width, const char pad)
+{
+    int i, n = 0;
+    int nwidth = 0;
+
+    // Find width of hexnumber 
+    while ((val >> (4 * nwidth)) && ((unsigned) nwidth <  2 * sizeof(val)))
+        nwidth++;
+    if (nwidth == 0)
+        nwidth = 1;
+
+    // May need to increase number of printed characters
+    if (width == 0 && width < nwidth)
+        width = nwidth;
+
+    // Print number with padding 
+    for (i = width - nwidth; i > 0; i--, n++)
+        USART3_SendChar(pad);
+    for (i = 4 * (nwidth - 1); i >= 0; i -= 4, n++)
+        USART3_SendChar(hexchars((val >> i) & 0xF));
+
+    return n;
+}
+
+
+void dbg_printf(char *fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    dbg_vprintf(fmt, va);
+    va_end(va);
+}
+
+void dbg_vprintf(char *fmt, va_list va)
+{
+    int mode = 0;   // 0: usual char; 1: specifiers
+    int width = 0;
+    char pad = ' ';
+    int size = 16;
+
+    while (*fmt) {
+        if (*fmt == '%') {
+            mode = 1;
+            pad = ' ';
+            width = 0;
+            size = 32;
+
+            fmt++;
+            continue;
+        }
+
+        if (!mode) {
+            if (*fmt == '\n')
+                USART3_SendChar('\r');
+            USART3_SendChar(*fmt);
+        } else {
+            switch (*fmt) {
+            case 'c':
+                USART3_SendChar(va_arg(va, uint32_t));
+                mode = 0;
+                break;
+            case 's':
+                dbg_puts_x(va_arg(va, char *), width, pad);
+                mode = 0;
+                break;
+            case 'l':
+            case 'L':
+                size = 64;
+                break;
+            case 'd':
+            case 'D':
+                dbg_put_dec((size == 32) ?
+                             va_arg(va, uint32_t) :
+                             va_arg(va, uint64_t),
+                             width, pad);
+                mode = 0;
+                break;
+            case 'p':
+            case 't':
+                size = 32;
+                width = 8;
+                pad = '0';
+            case 'x':
+            case 'X':
+                dbg_put_hex((size == 32) ?
+                             va_arg(va, uint32_t) :
+                             va_arg(va, uint64_t),
+                             width, pad);
+                mode = 0;
+                break;
+            case '%':
+                USART3_SendChar('%');
+                mode = 0;
+                break;
+            case '0':
+                if (!width)
+                    pad = '0';
+                break;
+            case ' ':
+                pad = ' ';
+            }
+            if (*fmt >= '0' && *fmt <= '9') {
+                width = width * 10 + (*fmt - '0');
+            }
+        }
+
+        fmt++;
+    }
+}    
+
+////////////////////////////////////////////////////////////////////////////////
+
 static void configureUartForExclusiveUseOfDebugger(UartParameters* pParameters)
 {
     uint32_t uart_index = pParameters->uartIndex;
@@ -574,5 +807,10 @@ static void configureUartForExclusiveUseOfDebugger(UartParameters* pParameters)
     enableUartToInterruptOnReceivedChar(uart_index);
     Platform_CommPrepareToWaitForGdbConnection();
     configureNVICForUartInterrupt(uart_index);
+
+
+	//Debugging
+	Debug_USART3_INIT();
+	dbg_printf("USART3_Debug Connecting Successfully!\n");
 }
 
