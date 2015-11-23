@@ -124,38 +124,13 @@ static void prepareForDebuggerExit(void);
 static void clearFirstExceptionFlag(void);
 void __mriDebugException(void)
 {
-	dbg_printf("========================================\n");
-	dbg_printf("ENTER Debug_Exception!\n");
-////////////////////////////////////////////////////////////////////////
     int wasWaitingForGdbToConnect = IsWaitingForGdbToConnect();
-	/*
-	if(wasWaitingForGdbToConnect > 0)
-	{
-		dbg_printf("wasWaitingForGdbToConnect > 0,Incorrect \n");
-	}else
-	{
-		dbg_printf("wasWaitingForGdbToConnect <= 0,Correct \n");
-	}
-	*/
-////////////////////////////////////////////////////////////////////////
     int justSingleStepped = Platform_IsSingleStepping();
-	/*
-	if(justSingleStepped > 0)
-	{
-		dbg_printf("justSingleStepped > 0 \n");
-	}else
-	{
-		dbg_printf("justSingleStepped <= 0 \n");
-	}
-	*/
-////////////////////////////////////////////////////////////////////////    
     if (Platform_CommCausedInterrupt() && !Platform_CommHasReceiveData())
     {
         Platform_CommClearInterrupt();
-		dbg_printf("Platform_commClearInterrupt done!\n");
         return;
     }
-///////////////////////////////////////////////////////////////////////
     Platform_EnteringDebuggerHook();
     blockIfGdbHasNotConnected();
     Platform_EnteringDebugger();
@@ -279,17 +254,13 @@ static int handleGDBCommand(void)
     getPacketFromGDB();
     
     commandChar = Buffer_ReadChar(pBuffer);
-	dbg_printf("commCh:%c",commandChar);
     for (i = 0 ; i < ARRAY_SIZE(commandTable) ; i++)
     {
         if (commandTable[i].commandChar == commandChar)
         {
-			dbg_printf("\n");
             handlerResult = commandTable[i].Handler();
             if (handlerResult & HANDLER_RETURN_RETURN_IMMEDIATELY)
             {
-				dbg_printf("CommandTable:%c\n",commandTable[i].commandChar);
-				dbg_printf("return in for loop:%d\n",handlerResult & HANDLER_RETURN_RESUME_PROGRAM);
                 return handlerResult & HANDLER_RETURN_RESUME_PROGRAM;
             }
             else
@@ -300,12 +271,10 @@ static int handleGDBCommand(void)
     }
     if (ARRAY_SIZE(commandTable) == i)
 	{
-		dbg_printf("PrepareEmptyResponseForUnknownCommand\n");
         PrepareEmptyResponseForUnknownCommand();
 	}
 
     SendPacketToGdb();
-	//dbg_printf("End of handleGDBcommand,return:%d\n",handlerResult & HANDLER_RETURN_RESUME_PROGRAM);
     return (handlerResult & HANDLER_RETURN_RESUME_PROGRAM);
 }
 
@@ -378,14 +347,12 @@ int IsFirstException(void)
 
 void SetSignalValue(uint8_t signalValue)
 {
-	dbg_printf("SetSignalValue:%d\n",signalValue); 
     g_mri.signalValue = signalValue;
 }
 
 
 uint8_t GetSignalValue(void)
 {
-	dbg_printf("GetSignalValue:%d\n",g_mri.signalValue);
     return g_mri.signalValue;
 }
 

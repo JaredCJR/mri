@@ -27,7 +27,6 @@
        Override USART1 exceptions and send to __mriExceptionHandler.
     */
 USART1_IRQHandler:
-	bl      printCurrentlyExecutingExceptionNumber
     b       __mriExceptionHandler
 
 

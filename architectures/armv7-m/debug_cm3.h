@@ -20,7 +20,6 @@
 #include <cmsis.h>
 #include <stdio.h>
 #include <try_catch.h>
-extern void dbg_printf(char *fmt, ...); 
 
 /* Data Watchpoint and Trace Registers */
 typedef struct
@@ -789,13 +788,6 @@ static __INLINE uint32_t getCurrentlyExecutingExceptionNumber(void)
     return (__get_IPSR() & 0xFF);
 }
 
-//////////////////////////////////////////////////////////////
-void printCurrentlyExecutingExceptionNumber(void)
-{
-	uint32_t except_num = __get_IPSR();
-	dbg_printf("GET_current_Exception_NUM:%d\n",except_num);
-}
-/////////////////////////////////////////////////////////////
 
 static __INLINE uint32_t getCurrentSysTickControlValue(void)
 {

@@ -498,14 +498,6 @@ int Platform_CommCausedInterrupt(void)
     //For USART1~3,the IRQn are continuous,others need check!
     uint32_t irq_num_base = (uint32_t)USART1_IRQn;
     uint32_t currentUartIRQ = irq_num_base + Platform_CommUartIndex();
-	if(currentUartIRQ==interruptSource)
-	{
-		dbg_printf("Platform_CommCausedInterrupt == 1\n");
-	}else
-	{
-		dbg_printf("IRQ_Sourec=%d\n",interruptSource);
-		dbg_printf("IRQ_Current=%d\n",currentUartIRQ);
-	}
     return currentUartIRQ==interruptSource;
 }
 
@@ -585,8 +577,8 @@ static void configureNVICForUartInterrupt(uint32_t index)
      */
     IRQn_Type currentUartIRQ;
     currentUartIRQ = (IRQn_Type)((int)irq_num_base + Platform_CommUartIndex()) ;
-    NVIC_SetPriority(USART1_IRQn, 0);
-    NVIC_EnableIRQ(USART1_IRQn);
+    NVIC_SetPriority(currentUartIRQ, 0);
+    NVIC_EnableIRQ(currentUartIRQ);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -774,12 +766,6 @@ void dbg_vprintf(char *fmt, va_list va)
     }
 }    
 
-////////////////////////////////////////////////////////////////////////////////
-
-void print_in_mriFaultHandler(void)
-{
-	dbg_printf("mriFaultHandler happend!\n");
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 static void configureUartForExclusiveUseOfDebugger(UartParameters* pParameters)
