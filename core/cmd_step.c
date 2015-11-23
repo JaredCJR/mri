@@ -20,6 +20,7 @@
 #include "cmd_registers.h"
 #include "cmd_step.h"
 
+extern void dbg_printf(char *fmt, ...);
 
 static uint32_t justAdvancedPastBreakpoint(uint32_t continueReturn);
 /* Handle the 's' command which is sent from gdb to tell the debugger to single step over the next instruction in the
@@ -32,15 +33,17 @@ static uint32_t justAdvancedPastBreakpoint(uint32_t continueReturn);
 */
 uint32_t HandleSingleStepCommand(void)
 {
+	dbg_printf("Entering HandleSingleStepCommand\n");
     /* Single step is pretty much like continue except processor is told to only execute 1 instruction. */
     if (justAdvancedPastBreakpoint(HandleContinueCommand()))
     {
+		dbg_printf("Prepare to Send_T_StopResponse\n");
         /* Treat the advance as the single step and don't resume execution. */
         return Send_T_StopResponse();
     }
 
     Platform_EnableSingleStep();
-
+	dbg_printf("Finish Platform_EnableSingleStep\n");
     return (HANDLER_RETURN_RESUME_PROGRAM | HANDLER_RETURN_RETURN_IMMEDIATELY);
 }
 

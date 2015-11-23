@@ -20,7 +20,6 @@
 #include "../../architectures/armv7-m/debug_cm3.h"
 #include "stm32f429xx_init.h"
 #include "stm32f429xx_usart.h"
-//#include "./stdarg.h"
 #include <stdarg.h>
 
 //start count by 0,1,2,etc
@@ -79,8 +78,6 @@ void dbg_vprintf(char *fmt, va_list va);
 static int dbg_put_hex(const uint32_t val, int width, const char pad);
 static void dbg_put_dec(const uint32_t val, const int width, const char pad);
 static void dbg_puts_x(char *str, int width, const char pad);
-
-void dbg2_put_dec(const uint32_t val);
 
 
 
@@ -641,25 +638,6 @@ static void dbg_puts_x(char *str, int width, const char pad)
     }
 }
 
-void dbg2_put_dec(const uint32_t val) 
-{
-    uint32_t divisor;
-    int digits;
-
-    // estimate number of spaces and digits
-    for (divisor = 1, digits = 1; val / divisor >= 10; divisor *= 10, digits++)
-        ;
-/*
-    // print spaces
-    for (; digits < width; digits++)
-        USART3_SendChar(pad);
-*/
-    // print digits 
-    do {
-        USART3_SendChar(((val / divisor) % 10) + '0');
-    } while (divisor /= 10);
-}
-
 
 static void dbg_put_dec(const uint32_t val, const int width, const char pad) 
 {
@@ -798,6 +776,12 @@ void dbg_vprintf(char *fmt, va_list va)
 
 ////////////////////////////////////////////////////////////////////////////////
 
+void print_in_mriFaultHandler(void)
+{
+	dbg_printf("mriFaultHandler happend!\n");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 static void configureUartForExclusiveUseOfDebugger(UartParameters* pParameters)
 {
     uint32_t uart_index = pParameters->uartIndex;
