@@ -493,7 +493,7 @@ void Platform_CommSendChar(int Character)
 
 int Platform_CommCausedInterrupt(void)
 {
-    uint32_t interruptSource = getCurrentlyExecutingExceptionNumber();
+    uint32_t interruptSource = getCurrentlyExecutingExceptionNumber()-16;
 
     //For USART1~3,the IRQn are continuous,others need check!
     uint32_t irq_num_base = (uint32_t)USART1_IRQn;
@@ -585,8 +585,8 @@ static void configureNVICForUartInterrupt(uint32_t index)
      */
     IRQn_Type currentUartIRQ;
     currentUartIRQ = (IRQn_Type)((int)irq_num_base + Platform_CommUartIndex()) ;
-    NVIC_SetPriority(currentUartIRQ, 0);
-    NVIC_EnableIRQ(currentUartIRQ);
+    NVIC_SetPriority(USART1_IRQn, 0);
+    NVIC_EnableIRQ(USART1_IRQn);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
