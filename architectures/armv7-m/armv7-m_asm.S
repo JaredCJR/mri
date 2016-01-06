@@ -349,13 +349,13 @@ mriClearFaultStatusBitsAndReturn:
     bx      lr
 
 
-    .global HardFault_Handler
-    .type HardFault_Handler, function
+    .global MRI_HardFault_Handler
+    .type MRI_HardFault_Handler, function
     .thumb_func
-    /* extern "C" void HardFault_Handler(void);
+    /* extern "C" void MRI_HardFault_Handler(void);
        Override Hard Faults and send to MriExceptionHandler.
     */
-HardFault_Handler:
+MRI_HardFault_Handler:
     b       mriFaultHandler
     
  
