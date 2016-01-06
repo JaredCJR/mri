@@ -359,41 +359,41 @@ MRI_HardFault_Handler:
     b       mriFaultHandler
     
  
-    .global MemManage_Handler
-    .type MemManage_Handler, function
+    .global MRI_MemManage_Handler
+    .type MRI_MemManage_Handler, function
     .thumb_func
-    /* extern "C" void MemManage_Handler(void);
+    /* extern "C" void MRI_MemManage_Handler(void);
        Override MPU Memory Faults and send to MriExceptionHandler.
     */
-MemManage_Handler:
+MRI_MemManage_Handler:
     b       mriFaultHandler
     
 
-    .global BusFault_Handler
-    .type BusFault_Handler, function
+    .global MRI_BusFault_Handler
+    .type MRI_BusFault_Handler, function
     .thumb_func
-    /* extern "C" void BusFault_Handler(void);
+    /* extern "C" void MRI_BusFault_Handler(void);
        Override Bus Faults and send to MriExceptionHandler.
     */
-BusFault_Handler:
+MRI_BusFault_Handler:
     b       mriFaultHandler
     
 
-    .global UsageFault_Handler
-    .type UsageFault_Handler, function
+    .global MRI_UsageFault_Handler
+    .type MRI_UsageFault_Handler, function
     .thumb_func
-    /* extern "C" void UsageFault_Handler(void);
+    /* extern "C" void MRI_UsageFault_Handler(void);
        Override Instruction Usage Faults and send to MriExceptionHandler.
     */
-UsageFault_Handler:
+MRI_UsageFault_Handler:
     b       __mriExceptionHandler
     
 
-    .global DebugMon_Handler
-    .type DebugMon_Handler, function
+    .global MRI_DebugMon_Handler
+    .type MRI_DebugMon_Handler, function
     .thumb_func
-    /* extern "C" void DebugMon_Handler(void);
+    /* extern "C" void MRI_DebugMon_Handler(void);
        Override Debug Monintor exceptions and send to MriExceptionHandler.
     */
-DebugMon_Handler:
+MRI_DebugMon_Handler:
     b       __mriExceptionHandler
