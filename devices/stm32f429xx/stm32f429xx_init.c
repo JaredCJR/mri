@@ -39,14 +39,14 @@ Stm32f429xxState __mriStm32f429xxState;
 
 
 /* Reference this handler in the ASM module to make sure that it gets linked in. */
-void USART1_IRQHandler(void);
+void MRI_USART1_IRQHandler(void);
 
 
 static void defaultExternalInterruptsToPriority1(void);
 void __mriStm32f429xx_Init(Token* pParameterTokens)
 {
     /* Reference handler in ASM module to make sure that is gets linked in. */
-    void (* volatile dummyReference)(void) = USART1_IRQHandler;
+    void (* volatile dummyReference)(void) = MRI_USART1_IRQHandler;
     (void)dummyReference;
 
     __try

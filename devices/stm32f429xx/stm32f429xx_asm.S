@@ -20,35 +20,35 @@
     .syntax unified
 
 
-    .global USART1_IRQHandler
-    .weak   USART1_IRQHandler
-    .type USART1_IRQHandler, function
+    .global MRI_USART1_IRQHandler
+    .weak   MRI_USART1_IRQHandler
+    .type MRI_USART1_IRQHandler, function
     .thumb_func
-    /* extern "C" void USART1_IRQHandler(void);
+    /* extern "C" void MRI_USART1_IRQHandler(void);
        Override USART1 exceptions and send to __mriExceptionHandler.
     */
-USART1_IRQHandler:
+MRI_USART1_IRQHandler:
     b       __mriExceptionHandler
 
 
-    .global USART2_IRQHandler
-    .weak   USART2_IRQHandler
-    .type USART2_IRQHandler, function
+    .global MRI_USART2_IRQHandler
+    .weak   MRI_USART2_IRQHandler
+    .type MRI_USART2_IRQHandler, function
     .thumb_func
-    /* extern "C" void USART2_IRQHandler(void);
+    /* extern "C" void MRI_USART2_IRQHandler(void);
        Override USART2 exceptions and send to __mriExceptionHandler.
     */
-USART2_IRQHandler:
+MRI_USART2_IRQHandler:
     b       __mriExceptionHandler
 
 
-    .global USART3_IRQHandler
-    .weak   USART3_IRQHandler
-    .type USART3_IRQHandler, function
+    .global MRI_USART3_IRQHandler
+    .weak   MRI_USART3_IRQHandler
+    .type MRI_USART3_IRQHandler, function
     .thumb_func
-    /* extern "C" void USART3_IRQHandler(void);
+    /* extern "C" void MRI_USART3_IRQHandler(void);
        Override USART3 exceptions and send to __mriExceptionHandler.
     */
-USART3_IRQHandler:
+MRI_USART3_IRQHandler:
     b       __mriExceptionHandler
 
