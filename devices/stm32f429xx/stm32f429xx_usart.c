@@ -17,6 +17,7 @@
 /* Routines used to provide STM32F429xx USART functionality to the mri debugger. */
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include "platforms.h"
 #include "../../architectures/armv7-m/debug_cm3.h"
 #include "stm32f429xx_init.h"
@@ -69,6 +70,16 @@ static void     setManualBaudFlag(void);
 static void     setUartSharedFlag(void);
 static void     saveUartToBeUsedByDebugger(uint32_t mriUart);
 static void     configureUartForExclusiveUseOfDebugger(UartParameters* pParameters);
+
+void USART2_SendChar(int Character);
+int USART2_ReceiveChar(void);
+void USART2_puts(char* s);
+void dbg_printf(char *fmt, ...); 
+void dbg_vprintf(char *fmt, va_list va);
+static int dbg_put_hex(const uint32_t val, int width, const char pad);
+static void dbg_put_dec(const uint32_t val, const int width, const char pad);
+static void dbg_puts_x(char *str, int width, const char pad);
+
 
 static uint32_t getDecimalDigit(char currChar) 
 {
@@ -618,4 +629,182 @@ static void configureUartForExclusiveUseOfDebugger(UartParameters* pParameters)
     enableUartToInterruptOnReceivedChar(uart_index);
     Platform_CommPrepareToWaitForGdbConnection();
     configureNVICForUartInterrupt(uart_index);
+
+    dbg_printf("USART2 Init done.\n");
 }
+
+/////////////////////////////////////////////////////////////////////////
+void USART2_SendChar(int Character)
+{
+    while ( !(USART2->SR & USART_SR_TXE) ) {
+        //busy wait
+    }   
+    USART2->DR = (Character & 0x1FF);
+}
+
+int USART2_ReceiveChar(void)  
+{
+    while( !(USART2->SR & USART_SR_RXNE) ) {
+        //busy wait
+    }
+    return (USART2->DR & 0x1FF);
+}
+
+void USART2_puts(char* s)
+{
+    while(*s) {
+        USART2_SendChar(*s);
+        s++;
+    }
+}
+
+static void dbg_puts_x(char *str, int width, const char pad) 
+{
+    while (*str) {
+        if (*str == '\n')
+            USART2_SendChar('\r');
+        USART2_SendChar(*(str++));
+        --width;
+    }
+
+    while (width > 0) {
+        USART2_SendChar(pad);
+        --width;
+    }
+}
+
+static void dbg_put_dec(const uint32_t val, const int width, const char pad) 
+{
+    uint32_t divisor;
+    int digits;
+
+    // estimate number of spaces and digits
+    for (divisor = 1, digits = 1; val / divisor >= 10; divisor *= 10, digits++)
+        ;
+
+    // print spaces
+    for (; digits < width; digits++)
+        USART2_SendChar(pad);
+
+    // print digits 
+    do {
+        USART2_SendChar(((val / divisor) % 10) + '0');
+    } while (divisor /= 10);
+}
+
+
+#define hexchars(x) \
+    (((x) < 10) ? \
+        ('0' + (x)) : \
+        ('a' + ((x) - 10)))
+
+static int dbg_put_hex(const uint32_t val, int width, const char pad)
+{
+    int i, n = 0;
+    int nwidth = 0;
+
+    // Find width of hexnumber 
+    while ((val >> (4 * nwidth)) && ((unsigned) nwidth <  2 * sizeof(val)))
+        nwidth++;
+    if (nwidth == 0)
+        nwidth = 1;
+
+    // May need to increase number of printed characters
+    if (width == 0 && width < nwidth)
+        width = nwidth;
+
+    // Print number with padding 
+    for (i = width - nwidth; i > 0; i--, n++)
+        USART2_SendChar(pad);
+    for (i = 4 * (nwidth - 1); i >= 0; i -= 4, n++)
+        USART2_SendChar(hexchars((val >> i) & 0xF));
+
+    return n;
+}
+
+
+void dbg_printf(char *fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    dbg_vprintf(fmt, va);
+    va_end(va);
+}
+
+void dbg_vprintf(char *fmt, va_list va)
+{
+    int mode = 0;   // 0: usual char; 1: specifiers
+    int width = 0;
+    char pad = ' ';
+    int size = 16;
+
+    while (*fmt) {
+        if (*fmt == '%') {
+            mode = 1;
+            pad = ' ';
+            width = 0;
+            size = 32;
+
+            fmt++;
+            continue;
+        }
+
+        if (!mode) {
+            if (*fmt == '\n')
+                USART2_SendChar('\r');
+            USART2_SendChar(*fmt);
+        } else {
+            switch (*fmt) {
+            case 'c':
+                USART2_SendChar(va_arg(va, uint32_t));
+                mode = 0;
+                break;
+            case 's':
+                dbg_puts_x(va_arg(va, char *), width, pad);
+                mode = 0;
+                break;
+            case 'l':
+            case 'L':
+                size = 64;
+                break;
+            case 'd':
+            case 'D':
+                dbg_put_dec((size == 32) ?
+                             va_arg(va, uint32_t) :
+                             va_arg(va, uint64_t),
+                             width, pad);
+                mode = 0;
+                break;
+            case 'p':
+            case 't':
+                size = 32;
+                width = 8;
+                pad = '0';
+            case 'x':
+            case 'X':
+                dbg_put_hex((size == 32) ?
+                             va_arg(va, uint32_t) :
+                             va_arg(va, uint64_t),
+                             width, pad);
+                mode = 0;
+                break;
+            case '%':
+                USART2_SendChar('%');
+                mode = 0;
+                break;
+            case '0':
+                if (!width)
+                    pad = '0';
+                break;
+            case ' ':
+                pad = ' ';
+            }
+            if (*fmt >= '0' && *fmt <= '9') {
+                width = width * 10 + (*fmt - '0');
+            }
+        }
+
+        fmt++;
+    }
+}    
+
